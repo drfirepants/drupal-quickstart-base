@@ -1,0 +1,9 @@
+{
+  "patches": {
+    "_readme": [
+      "This file contains all patches applied to the Drupal codebase.",
+      "Each entry contains information about the module being patched and the patch itself.",
+      "Format: {module-name}: {description}: {url-or-local-path}"
+    ]
+  }
+}
