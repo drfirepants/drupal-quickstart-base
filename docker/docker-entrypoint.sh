@@ -51,9 +51,9 @@ if [ ! -f "/var/www/html/web/sites/default/settings.php" ] || [ "$DRUPAL_INSTALL
   su - www-data -s /bin/bash -c "cd /var/www/html && \
     drush site:install standard \
     --db-url=mysql://${DRUPAL_DB_USER}:${DRUPAL_DB_PASSWORD}@${DRUPAL_DB_HOST}/${DRUPAL_DB_NAME} \
-    --site-name='My Drupal Docker Site' \
-    --account-name=admin \
-    --account-pass=admin \
+    --site-name=\"${DRUPAL_SITE_NAME:-My Drupal Site}\" \
+    --account-name=\"${DRUPAL_ACCOUNT_NAME:-admin}\" \
+    --account-pass=\"${DRUPAL_ACCOUNT_PASS:-admin}\" \
     --yes"
 
   # Install some common modules that we might want enabled by default

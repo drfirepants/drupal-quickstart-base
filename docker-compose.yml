@@ -2,14 +2,20 @@ services:
   db:
     image: mysql:8
     environment:
-      MYSQL_DATABASE: drupal
-      MYSQL_USER: drupal
-      MYSQL_PASSWORD: drupal
-      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-drupal}
+      MYSQL_USER: ${MYSQL_USER:-drupal}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-drupal}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpassword}
     volumes:
       - drupal-data:/var/lib/mysql
     ports:
-      - "3307:3306"
+      - "${MYSQL_PORT_HOST:-3307}:3306" # Expose MySQL on a configurable host port, default 3307
+    healthcheck:
+      test: ["CMD", "mysqladmin" ,"ping", "-h", "localhost", "-u${MYSQL_USER}", "-p${MYSQL_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s # Give MySQL some time to initialize before starting health checks
 
   drupal:
     build:
@@ -17,17 +23,42 @@ services:
       dockerfile: docker/Dockerfile
     container_name: drupal_app
     depends_on:
-      - db
+      db:
+        condition: service_healthy # Wait for DB to be healthy
     ports:
-      - "8080:80"
+      - "${DRUPAL_PORT_HOST:-8080}:80" # Expose Drupal on a configurable host port, default 8080
+      # If you need to expose Xdebug directly (less common, usually client_host is enough)
+      # - "9003:9003"
     environment:
+      # Drupal Database Connection
       DRUPAL_DB_HOST: db
-      DRUPAL_DB_NAME: drupal
-      DRUPAL_DB_USER: drupal
-      DRUPAL_DB_PASSWORD: drupal
+      DRUPAL_DB_NAME: ${MYSQL_DATABASE:-drupal}
+      DRUPAL_DB_USER: ${MYSQL_USER:-drupal}
+      DRUPAL_DB_PASSWORD: ${MYSQL_PASSWORD:-drupal}
+      DRUPAL_SITE_NAME: ${DRUPAL_SITE_NAME:-My Drupal Docker Site}
+      DRUPAL_ACCOUNT_NAME: ${DRUPAL_ACCOUNT_NAME:-admin}
+      DRUPAL_ACCOUNT_PASS: ${DRUPAL_ACCOUNT_PASS:-admin}
+
+      # Xdebug Configuration
+      # The XDEBUG_CONFIG environment variable can be used by Xdebug 3 to set configuration options.
+      # Alternatively, these are set in xdebug.ini, but can be overridden here if needed.
+      # Example: XDEBUG_CONFIG: "client_host=host.docker.internal client_port=9003 log=/tmp/xdebug.log"
+      # PHP_IDE_CONFIG is often used by IDEs to identify server configurations.
+      PHP_IDE_CONFIG: "serverName=DrupalDocker" # Example, adjust to your IDE's needs
+
+      # You might also need to pass XDEBUG_SESSION if you use xdebug.start_with_request=trigger
+      # XDEBUG_SESSION: "VSCODE" # Or your preferred IDE key
+
     volumes:
+      # Mount your Drupal codebase into the container
       - .:/var/www/html
+      # Persistent volume for Drupal's public files (e.g., uploaded images)
+      - drupal-files:/var/www/html/web/sites/default/files
+      # You could also mount a volume for composer cache to speed up builds/installs
+      # - composer_cache:/root/.composer/cache # If composer runs as root in Dockerfile
+      - composer_cache:/var/www/.composer/cache # If composer runs as www-data or if WORKDIR is /var/www/html
 
 volumes:
-  drupal-data:
-  drupal-files:
+  drupal-data: # Persists MySQL data
+  drupal-files: # Persists Drupal uploaded files
+  composer_cache: # Persists composer cache

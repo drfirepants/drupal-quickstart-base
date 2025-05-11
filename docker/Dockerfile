@@ -1,6 +1,6 @@
 FROM php:8.2-apache
 
-# 1) Install system packages & PHP extensions
+# 1) Install system packages, PHP extensions & Xdebug
 RUN apt-get update && apt-get install -y \
     libfreetype6-dev \
     libjpeg62-turbo-dev \
@@ -11,8 +11,19 @@ RUN apt-get update && apt-get install -y \
     unzip \
   && rm -rf /var/lib/apt/lists/*
 
+# Install PHP extensions
 RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
   && docker-php-ext-install -j$(nproc) gd opcache pdo_mysql zip
+
+# Install Xdebug
+RUN pecl install xdebug \
+  && docker-php-ext-enable xdebug
+
+# Copy Xdebug configuration
+COPY docker/xdebug.ini /usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini
+
+# Optional: Create Xdebug log directory if logging is enabled in xdebug.ini
+# RUN mkdir -p /var/log/xdebug && chown www-data:www-data /var/log/xdebug
 
 # 2) Enable Apache mod_rewrite
 RUN a2enmod rewrite
@@ -26,15 +37,14 @@ WORKDIR /var/www/html
 
 # 5) Copy in your composer.json (and patches.json, etc.)
 COPY composer.json .
+COPY composer.lock ./
 COPY patches.json ./
-# If you have one:
-# COPY composer.lock ./
 
 # 6) Install Drupal (core, contrib, etc.)
 RUN composer install --no-interaction --prefer-dist
 
 # 7) Install Drush **in the project**, not globally
-RUN composer require drush/drush:12.x
+RUN composer require drush/drush:12.x --dev
 RUN ln -s /var/www/html/vendor/bin/drush /usr/local/bin/drush
 
 # 8) Put Drush on the PATH
