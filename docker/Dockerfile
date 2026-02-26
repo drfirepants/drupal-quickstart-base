@@ -37,14 +37,13 @@ WORKDIR /var/www/html
 
 # 5) Copy in your composer.json (and patches.json, etc.)
 COPY composer.json .
-COPY composer.lock ./
 COPY patches.json ./
 
 # 6) Install Drupal (core, contrib, etc.)
 RUN composer install --no-interaction --prefer-dist
 
 # 7) Install Drush **in the project**, not globally
-RUN composer require drush/drush:12.x --dev
+RUN composer require drush/drush:^13 --no-interaction
 RUN ln -s /var/www/html/vendor/bin/drush /usr/local/bin/drush
 
 # 8) Put Drush on the PATH
