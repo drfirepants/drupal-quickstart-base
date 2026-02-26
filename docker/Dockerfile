@@ -1,4 +1,4 @@
-FROM php:8.2-apache
+FROM php:8.4-apache
 
 # 1) Install system packages, PHP extensions & Xdebug
 RUN apt-get update && apt-get install -y \
